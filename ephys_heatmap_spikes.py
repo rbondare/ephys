@@ -1,15 +1,19 @@
 
 import numpy as np 
+import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib import colors 
 import pyabf 
 import seaborn as sns
 import os
 
+
+
 base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA"
 
-abf1 = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0020.abf"))
-abf2 = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0021.abf"))
-abf3 = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0022.abf"))
+abf1 = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0013.abf"))
+abf2 = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0014.abf"))
+abf3 = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0015.abf"))
 #abf4 = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0009.abf"))
 all_sweeps = []
 
@@ -39,9 +43,12 @@ sweep_data = np.zeros((num_sweeps, num_timepoints))
 for i, sweep in enumerate(all_sweeps):
     sweep_data[i, :] = sweep  # Each row is a sweep, each column is a time point
 
+
+divnorm = colors.TwoSlopeNorm(vmin=-70., vcenter=0, vmax=40)
+
 # Plot heatmap using imshow (better for large data)
 plt.figure(figsize=(10, 6))
-plt.imshow(sweep_data, aspect='auto', cmap='gray', origin='lower',
+plt.imshow(sweep_data, aspect='auto', cmap='RdBu_r', norm = divnorm, origin='lower',
            extent=[abf1.sweepX[0], abf1.sweepX[-1], 0, num_sweeps])
 
 # Labels and Titles
