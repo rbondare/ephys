@@ -8,8 +8,13 @@ from scipy.signal import find_peaks, bessel, filtfilt, savgol_filter
 from sklearn.decomposition import PCA
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-xlim = [0.48, 0.54]
+xlim = [0, 2]
 ylim = [-80, 70]
+
+
+base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA"
+threshold_file = os.path.join(base_dir, "29.01.2025 M2/2025_01_29_0041.abf")
+
 
 def detect_spikes(file_path, cols):
     abf = pyabf.ABF(file_path)
@@ -17,14 +22,25 @@ def detect_spikes(file_path, cols):
     all_spikes = []
     spike_counts = []
 
- 
+    # Calculate the threshold for spike detection (it is based on a representive sweep)
+    
+    if threshold_file:
+        threshold_abf = pyabf.ABF(threshold_file)
+        threshold_abf.setSweep(0)
+        threshold_data = threshold_abf.sweepY
+        threshold = np.mean(threshold_data) + 20 * np.std(threshold_data)
+    else:
+        abf.setSweep(0)
+        first_sweep_data = abf.sweepY
+        threshold = np.mean(first_sweep_data) + 15 * np.std(first_sweep_data)    
+    
 
     for sweep_index in range(abf.sweepCount):
         abf.setSweep(sweep_index)
         sweep_data = abf.sweepY
 
         # Calculate the threshold
-        threshold = np.mean(sweep_data) + 20 * np.std(sweep_data)
+        #threshold = np.mean(sweep_data) + 17 * np.std(sweep_data)
 
         # Detect peaks
         peaks, _ = find_peaks(sweep_data, height=threshold)
@@ -56,7 +72,9 @@ def detect_spikes(file_path, cols):
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
 
-    return len(spike_counts), total_spikes  # Return total number of sweeps and spikes
+    # calculate normalized spikes per sweep 
+    if num_sweeps >0:
+        norm_spikes = total_spikes/num_sweeps
+        print(f'Normalised spikes:"{norm_spikes:.2f} spikes/sweep')
 
-
-detect_spikes("/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA/29.01.2025 M2/2025_01_29_0040.abf", 5) 
+    return file_path, norm_spikes  # Return total number of sweeps and spikes 
