@@ -14,9 +14,18 @@ def extract_rmp(file_path):
     if len(abf.sweepList) < 6:
         print(f"Skipping {file_path}: fewer than 5 sweeps")
         return None
-    abf.setSweep(5)  # Use sweep 5 (adjust if needed)
-    rmp = np.mean(abf.sweepY[:int(0.1 * abf.dataRate)])  # First 100 ms
+    
+    # Extract the first 100 ms from each sweep and calculate the mean
+    sweep_rmp_values = []
+    for sweep in abf.sweepList:
+        abf.setSweep(sweep)  # Set the current sweep
+        first_100ms = abf.sweepY[:int(0.1 * abf.dataRate)]  # First 100 ms
+        sweep_rmp_values.append(np.mean(first_100ms))  # Calculate mean for the sweep
+    
+    # Average across all sweeps
+    rmp = np.mean(sweep_rmp_values)
     return rmp
+
 
 # Specify the folder containing the ABF files
 folder_path = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA/20.02.2025 M1"
