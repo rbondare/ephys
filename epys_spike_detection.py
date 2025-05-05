@@ -1,16 +1,19 @@
 """
-Improved script to detect all peaks in each sweep of an ABF file.
+Improved script to detect all peaks in each sweep of an ABF file within a specific time window.
 """
 
 import pyabf
 from scipy.signal import find_peaks
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 import os
+import glob
 
-# Define the base directory and ABF file path
-base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA"
-abf = pyabf.ABF(os.path.join(base_dir, "24.03.2025 M1/2025_03_24_0007.abf"))
+time_window = [0.45, 0.7]  
+
+
+base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA/30.01.2025 M3"
+abf_files = glob.glob(os.path.join(base_dir, "**/*.abf"), recursive=True)
 
 # Function to detect peaks
 def detect_all_peaks(data_array, height_threshold=2, prominence_min=0.1, distance_min=5):
@@ -35,51 +38,48 @@ def detect_all_peaks(data_array, height_threshold=2, prominence_min=0.1, distanc
     )
     return peaks, properties
 
-# Time window to focus on (in seconds)
-xlim = [0.45, 0.7]
+# Initialize a DataFrame to store results
+results = pd.DataFrame(columns=["File", "Total Peaks", "Total Sweeps", "Normalized Peaks"])
 
-# Create subplots for each sweep
-num_sweeps = len(abf.sweepList)
-cols = 5  # Number of columns for subplots
-rows = int(np.ceil(num_sweeps / cols))
-fig, axes = plt.subplots(rows, cols, figsize=(cols * 1.5, rows * 1.0), sharex=True, sharey=True)
-axs = axes.flatten()  # Flatten the 2D array of axes into a 1D array
-
-# List to store all peak counts
-all_peak_counts = []
-
-# Process each sweep
-for i, sweep in enumerate(abf.sweepList):
-    abf.setSweep(sweep)
+# Loop through each file
+for abf_file in abf_files:
+    abf = pyabf.ABF(abf_file)
     
-    # Detect all peaks
-    peaks, peak_properties = detect_all_peaks(
-        abf.sweepY,
-        height_threshold=0,  # Lowered threshold to detect smaller peaks
-        prominence_min=0.1,  # Reduced prominence to include less distinct peaks
-        distance_min=5       # Minimum distance between peaks (adjust as needed)
-    )
+    total_peaks = 0
+    total_sweeps = len(abf.sweepList)  
     
-    all_peak_counts.append(len(peaks))
+    # Process each sweep
+    for sweep in abf.sweepList:
+        abf.setSweep(sweep)
+        
+        # Filter the data to the specified time window
+        mask = (abf.sweepX >= time_window[0]) & (abf.sweepX <= time_window[1])
+        filtered_x = abf.sweepX[mask]
+        filtered_y = abf.sweepY[mask]
+        
+        # Use the existing detect_all_peaks function on the filtered data
+        peaks, _ = detect_all_peaks(
+            filtered_y,
+            height_threshold=0,  # Lowered threshold to detect smaller peaks
+            prominence_min=0.1,  # Reduced prominence to include less distinct peaks
+            distance_min=5       # Minimum distance between peaks (adjust as needed)
+        )
+        
+        # Add the number of peaks in this sweep to the total
+        total_peaks += len(peaks)
     
-    # Plot the sweep
-    axs[i].plot(abf.sweepX, abf.sweepY, color='black', label=f"Sweep {sweep}")
+    # Calculate normalized peaks (total peaks divided by total sweeps)
+    normalized_peaks = total_peaks / total_sweeps if total_sweeps > 0 else 0
     
-    # Mark all detected peaks
-    if len(peaks) > 0:
-        axs[i].scatter(abf.sweepX[peaks], abf.sweepY[peaks], color='red', s=30)
-    
-    axs[i].set_xlim(xlim)  # Set x-axis limits for each subplot
-    axs[i].set_title(f"Sweep {sweep}: {len(peaks)} peaks", fontsize=8)
+    # Add results for this file to the DataFrame
+    results = pd.concat([results, pd.DataFrame([{
+        "File": os.path.basename(abf_file),  # Add only the file name, not the full path
+        "Total Peaks": total_peaks,
+        "Total Sweeps": total_sweeps,
+        "Normalized Peaks": normalized_peaks
+    }])], ignore_index=True)
 
-# Hide unused subplots if the number of sweeps is less than rows * cols
-for j in range(len(abf.sweepList), len(axs)):
-    axs[j].axis('off')
+# Save the results to a CSV file
+results.to_csv("peak_detection.csv", index=False)
 
-# Adjust layout
-plt.tight_layout()
-plt.show()
-
-# Print summary statistics
-print(f"Average peaks per sweep: {np.mean(all_peak_counts):.2f}")
-print(f"Total peaks detected across all sweeps: {sum(all_peak_counts)}")
+print(results)
