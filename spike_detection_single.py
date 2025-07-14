@@ -30,16 +30,17 @@ def detect_all_peaks(data_array, height_threshold=2, prominence_min=0.1, distanc
     )
     return peaks, properties
 
-base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA"
+base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA/ntsr1/"
 
-abf = pyabf.ABF(os.path.join(base_dir, "25.03.2025 M3/2025_03_25_0039.abf"))
+abf = pyabf.ABF(os.path.join(base_dir, "20.02.2025 M3/2025_02_20_0019.abf"))
 
-time_range = [0, 0.52]
+time_range = [0.5, 0.515] # this time range to detect only the FIRST SPIKE 
+#time_range = [0, 4] #for the enitre duration of the sweep
 
-#xlim = [0.45, 0.7]
+xlim = [0.45, 1]
 # Create subplots for each sweep
 num_sweeps = len(abf.sweepList)
-cols = 6  # Number of columns for subplots
+cols = 6 # Number of columns for subplots
 rows = int(np.ceil(num_sweeps / cols))
 fig, axes = plt.subplots(rows, cols, figsize=(cols * 1.5, rows * 1.0), sharex=True, sharey=True)
 axs = axes.flatten()  # Flatten the 2D array of axes into a 1D array
@@ -75,6 +76,8 @@ for i, sweep in enumerate(abf.sweepList):
         axs[i].scatter(filtered_x[peaks], filtered_y[peaks], color='red', s=30)
     
     axs[i].set_title(f"Sweep {sweep}: {len(peaks)} peaks", fontsize=8)
+
+    axs[i].set_xlim(xlim)
 
 # Hide unused subplots if the number of sweeps is less than rows * cols
 for j in range(len(abf.sweepList), len(axs)):
