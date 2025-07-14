@@ -12,7 +12,7 @@ xlim = [0, 2]
 ylim = [-80, 70]
 
 
-base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA"
+base_dir = "Z:\\Group Members\\Rima\\Ephys_NE\\DATA\\"
 threshold_file = os.path.join(base_dir, "29.01.2025 M2/2025_01_29_0041.abf")
 
 
