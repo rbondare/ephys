@@ -19,10 +19,10 @@ import seaborn as sns
 import os
 import math 
 
-base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA"
+base_dir = "Z:\\Group Members\\Rima\\Ephys_NE\\DATA\\ntsr1"
 
 #abf = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0021.abf"))
-abf = pyabf.ABF(os.path.join(base_dir, "25.07.24 M1/2024_07_25_0008.abf"))
+abf = pyabf.ABF(os.path.join(base_dir, "29.03.2025 M6/2025_03_29_0011.abf"))
 
 xlim = [0.45, 0.6] #for subplots of 500 ms opto stim 
 #xlim = [0.03, 0.15] #for subplots of 80 ms opto stim 
