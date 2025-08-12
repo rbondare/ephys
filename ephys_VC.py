@@ -12,8 +12,8 @@ import seaborn as sns
 import os
 import math 
 
-base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA"
-abf = pyabf.ABF(os.path.join(base_dir, "25.03.2025 M3/2025_03_25_0028.abf"))
+base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA/gad"
+abf = pyabf.ABF(os.path.join(base_dir, "26.03.2025 M4/2025_03_26_0005.abf"))
 
 # Initialize a list to store all sweeps
 all_sweeps = []
