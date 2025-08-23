@@ -11,6 +11,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import glob 
+from statannotations.Annotator import Annotator
+from scipy.stats import f_oneway
+from statsmodels.stats.anova import AnovaRM
+import pingouin as pg
+
 
 def detect_peaks(data_array, height_threshold=2, prominence_min=0.1, distance_min=5):
     
@@ -414,6 +419,240 @@ def plot_by_genotype_ratio(results):
         
         plt.tight_layout()
         plt.show()
+
+
+def plot_by_genotype_figure(results, output_dir):
+    """
+    results : DataFrame
+        DataFrame with columns: ID, genotype, baseline, Noradrenaline, wash
+    """
+    genotypes = results['genotype'].unique()
+    conditions = ['baseline', 'Noradrenaline', 'wash']
+    colors = ['lightgrey', 'lightcoral', 'lightblue']
+    colors_bar = ["#A2A0A0", "#EB6F6F",  "#89CFF0"]  # Colors for the mean lines
+
+    for genotype in genotypes:
+        group = results[results['genotype'] == genotype]
+        if group.empty:
+            continue
+
+        plt.figure(figsize=(4.5, 6))
+        jitter_amount = 0.15
+        np.random.seed(42)
+        ax = plt.gca()
+        
+        # Prepare boxplot data
+        box_data = [group[cond].dropna().values for cond in conditions]
+        
+        # Plot boxplots with only face color, no edges or whiskers visible
+        box = ax.boxplot(
+            box_data,
+            positions=range(len(conditions)),
+            widths=0.4,
+            patch_artist=True,
+            showfliers=False,
+            medianprops=dict(color='none'),
+            boxprops=dict(facecolor='none', edgecolor='none'),
+            whiskerprops=dict(color='none'),
+            capprops=dict(color='none')
+        )
+        # Set facecolor of boxes with your colors but no edge
+        for patch, color in zip(box['boxes'], colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.9)  # light shading
+        
+        # Plot individual points and connect pairs with lines
+        for idx, row in group.iterrows():
+            y = [row[cond] for cond in conditions]
+            x_jittered = [i + np.random.uniform(-jitter_amount, jitter_amount) 
+                          for i in range(len(conditions))]
+            
+            # Connect points with a thin gray line, using jittered x positions
+            plt.plot(x_jittered, y, color='gray', alpha=0.3, linewidth=1, zorder=1)
+            
+            # Scatter points with color per condition
+            for i, (x, val) in enumerate(zip(x_jittered, y)):
+                plt.scatter(x, val, color=colors_bar[i], alpha=0.6, s=60, zorder=2,
+                            edgecolors='black', linewidths=0.1)
+
+        # Draw thick horizontal median lines for each condition
+        for i, cond in enumerate(conditions):
+            y_vals = group[cond].dropna().values
+            if len(y_vals) > 0:
+                plt.hlines(np.median(y_vals), i - 0.2, i + 0.2,
+                           color=colors_bar[i], linewidth=3.5, zorder=3)
+            
+
+        # Remove top and right spines
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        plt.tight_layout()
+
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            print(f"Created output directory: {output_dir}")
+
+        plt.xticks(range(len(conditions)), ['baseline', 'NA', 'wash'], rotation=45)
+        plt.ylabel("Firing Rate (Hz)")
+        plt.title(f"{genotype}")
+        plt.xlim(-0.5, len(conditions) - 0.5)  # Set x limits to show jittered points properly
+    
+
+        # Sanitize genotype string for filename (remove/replace problematic characters)
+        safe_genotype = "".join(c if c.isalnum() or c in (' ', '_', '-') else '_' for c in str(genotype))
+        #plt.savefig(os.path.join(output_dir, f"{safe_genotype}_spike_probability.pdf"))
+        plt.show()
+
+def add_significance(ax, pairs, pvalues, y_offset=0.1, h=0.05, fontsize=12):
+        """
+        Draw significance bars and stars.
+        """
+        ymax = ax.get_ylim()[1]
+        start_y = ymax + y_offset * ymax
+
+        for i, ((x1, x2), pval) in enumerate(zip(pairs, pvalues)):
+            if pval < 0.001:
+                stars = '***'
+            elif pval < 0.01:
+                stars = '**'
+            elif pval < 0.05:
+                stars = '*'
+            else:
+                stars = 'n.s.'
+
+            y = start_y + i * h * ymax
+            ax.plot([x1, x1, x2, x2], [y, y+h*ymax*0.05, y+h*ymax*0.05, y],
+                    lw=1.5, c='k')
+            ax.text((x1+x2)/2, y+h*ymax*0.05, stars,
+                    ha='center', va='bottom', fontsize=fontsize)
+
+def plot_by_genotype_stat(results, output_dir):
+    """
+    results : DataFrame
+        DataFrame with columns: ID, genotype, baseline, Noradrenaline, wash
+    """
+    genotypes = results['genotype'].unique()
+    conditions = ['baseline', 'Noradrenaline', 'wash']
+    colors = ['lightgrey', 'lightcoral', 'lightblue']
+    colors_bar = ["#A2A0A0", "#EB6F6F",  "#89CFF0"]  # Colors for the mean lines
+
+    for genotype in genotypes:
+        group = results[results['genotype'] == genotype]
+        if group.empty:
+            continue
+
+        # ---------- Run repeated-measures ANOVA ----------
+        # Melt to long format
+        long_df = group.melt(
+            id_vars=['ID', 'genotype'],
+            value_vars=conditions,
+            var_name='condition',
+            value_name='firingRate_10sweeps_all'
+        )
+
+        try:
+            aov = AnovaRM(
+                data=long_df,
+                depvar='firingRate_10sweeps_all',
+                subject='ID',
+                within=['condition']
+
+            ).fit()
+            print(f"\nRepeated-measures ANOVA for genotype {genotype}:")
+            print(aov)
+
+            # Post-hoc pairwise tests with Bonferroni correction
+            posthoc = pg.pairwise_ttests(
+                dv='firingRate_10sweeps_all',
+                within='condition',
+                subject='ID',
+                data=long_df,
+                padjust='bonf'
+            )
+            print("  Post-hoc (Bonferroni corrected):")
+            for _, row in posthoc.iterrows():
+                A, B, pval = row['A'], row['B'], row['p-corr']
+                print(f"    {A} vs {B}: p = {pval:.4f}")
+        except Exception as e:
+            print(f"Error during ANOVA or post-hoc tests for genotype {genotype}: {e}")
+
+        # ---------- Plotting ----------
+        plt.figure(figsize=(4.5, 6))
+        jitter_amount = 0.15
+        np.random.seed(42)
+        ax = plt.gca()
+        
+        # Prepare boxplot data
+        box_data = [group[cond].dropna().values for cond in conditions]
+        
+        # Plot boxplots with only face color, no edges or whiskers visible
+        box = ax.boxplot(
+            box_data,
+            positions=range(len(conditions)),
+            widths=0.4,
+            patch_artist=True,
+            showfliers=False,
+            medianprops=dict(color='none'),
+            boxprops=dict(facecolor='none', edgecolor='none'),
+            whiskerprops=dict(color='none'),
+            capprops=dict(color='none')
+        )
+        # Set facecolor of boxes with your colors but no edge
+        for patch, color in zip(box['boxes'], colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.9)  # light shading
+        
+        # Plot individual points and connect pairs with lines
+        for idx, row in group.iterrows():
+            y = [row[cond] for cond in conditions]
+            x_jittered = [i + np.random.uniform(-jitter_amount, jitter_amount) 
+                          for i in range(len(conditions))]
+            
+            # Connect points with a thin gray line, using jittered x positions
+            plt.plot(x_jittered, y, color='gray', alpha=0.3, linewidth=1, zorder=1)
+            
+            # Scatter points with color per condition
+            for i, (x, val) in enumerate(zip(x_jittered, y)):
+                plt.scatter(x, val, color=colors_bar[i], alpha=0.6, s=60, zorder=2,
+                            edgecolors='black', linewidths=0.1)
+
+        # Draw thick horizontal median lines for each condition
+        for i, cond in enumerate(conditions):
+            y_vals = group[cond].dropna().values
+            if len(y_vals) > 0:
+                plt.hlines(np.median(y_vals), i - 0.2, i + 0.2,
+                           color=colors_bar[i], linewidth=3.5, zorder=3)
+
+        if posthoc is not None:
+            pairs = []
+            pvals = []
+            mapping = {cond: i for i, cond in enumerate(conditions)}
+            for _, row in posthoc.iterrows():
+                pairs.append((mapping[row['A']], mapping[row['B']]))
+                pvals.append(row['p-corr'])
+            add_significance(ax, pairs, pvals)
+
+        # Remove top and right spines
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        plt.tight_layout()
+
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            print(f"Created output directory: {output_dir}")
+
+        plt.xticks(range(len(conditions)), ['baseline', 'NA', 'wash'], rotation=45)
+        plt.ylabel("Firing Rate (Hz)")
+       # plt.title(f"{genotype}")
+        plt.xlim(-0.5, len(conditions) - 0.5)  # Set x limits to show jittered points properly
+    
+        # Save or show
+        safe_genotype = "".join(c if c.isalnum() or c in (' ', '_', '-') else '_' for c in str(genotype))
+        # plt.savefig(os.path.join(output_dir, f"{safe_genotype}_firingrate.pdf"))
+        plt.show()
+
 
 def main(csv_file_path, output_dir="C:\\Users\\rbondare\\ephys\\results\\"):
     """
