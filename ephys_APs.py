@@ -19,14 +19,14 @@ import seaborn as sns
 import os
 import math 
 
-base_dir = "Z:\\Group Members\\Rima\\Ephys_NE\\DATA\\ntsr1"
+base_dir = "Z:\Group Members\Rima\Ephys_NE\DATA\Opto_Cohort1"
 
-#abf = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0021.abf"))
-abf = pyabf.ABF(os.path.join(base_dir, "29.03.2025 M6/2025_03_29_0011.abf"))
+#abf = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0019.abf"))
+abf = pyabf.ABF(os.path.join(base_dir, "12.12.2025 M3/2025_12_12_0020.abf"))
 
-xlim = [0.45, 0.6] #for subplots of 500 ms opto stim 
+#xlim = [0.45, 0.6] #for subplots of 500 ms opto stim 
 #xlim = [0.03, 0.15] #for subplots of 80 ms opto stim 
-ylim = [-80, 70]
+#ylim = [-80, 70]
 num_sweeps = len(abf.sweepList)
 cols = 5  # Number of columns for subplots
 rows = int(np.ceil(num_sweeps / cols)) 
@@ -44,8 +44,8 @@ for i, sweep in enumerate(abf.sweepList):
     abf.setSweep(sweep)
     axs[i].plot(abf.sweepX, abf.sweepY, color='black', linewidth=0.6)
     axs[i].set_title(f"Sweep {sweep}", fontsize=5)
-    axs[i].set_xlim(xlim)
-    axs[i].set_ylim(ylim)
+    #axs[i].set_xlim(xlim)
+    #axs[i].set_ylim(ylim)S
     axs[i].tick_params(labelbottom=True, labelsize=4)
 
 # Hide unused subplots

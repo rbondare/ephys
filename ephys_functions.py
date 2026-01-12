@@ -583,26 +583,6 @@ def plot_by_genotype_stat(results, output_dir):
         np.random.seed(42)
         ax = plt.gca()
         
-        # Prepare boxplot data
-        box_data = [group[cond].dropna().values for cond in conditions]
-        
-        # Plot boxplots with only face color, no edges or whiskers visible
-        box = ax.boxplot(
-            box_data,
-            positions=range(len(conditions)),
-            widths=0.4,
-            patch_artist=True,
-            showfliers=False,
-            medianprops=dict(color='none'),
-            boxprops=dict(facecolor='none', edgecolor='none'),
-            whiskerprops=dict(color='none'),
-            capprops=dict(color='none')
-        )
-        # Set facecolor of boxes with your colors but no edge
-        for patch, color in zip(box['boxes'], colors):
-            patch.set_facecolor(color)
-            patch.set_alpha(0.9)  # light shading
-        
         # Plot individual points and connect pairs with lines
         for idx, row in group.iterrows():
             y = [row[cond] for cond in conditions]
@@ -650,7 +630,7 @@ def plot_by_genotype_stat(results, output_dir):
     
         # Save or show
         safe_genotype = "".join(c if c.isalnum() or c in (' ', '_', '-') else '_' for c in str(genotype))
-        # plt.savefig(os.path.join(output_dir, f"{safe_genotype}_firingrate.pdf"))
+        plt.savefig(os.path.join(output_dir, f"{safe_genotype}_firingrate.svg"))
         plt.show()
 
 
