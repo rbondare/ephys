@@ -22,7 +22,7 @@ import math
 base_dir = "Z:\Group Members\Rima\Ephys_NE\DATA\Opto_Cohort1"
 
 #abf = pyabf.ABF(os.path.join(base_dir, "30.01.2025 M3/2025_01_30_0019.abf"))
-abf = pyabf.ABF(os.path.join(base_dir, "12.12.2025 M2/2025_12_12_0008.abf"))
+abf = pyabf.ABF(os.path.join(base_dir, "11.12.2025 M1\\2025_12_11_0025.abf"))
 
 #xlim = [0.45, 0.6] #for subplots of 500 ms opto stim 
 #xlim = [0.03, 0.15] #for subplots of 80 ms opto stim 
