@@ -30,14 +30,17 @@ def detect_all_peaks(data_array, height_threshold=2, prominence_min=0.1, distanc
     )
     return peaks, properties
 
-base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA/ntsr1/"
+#base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA/ntsr1/"
+base_dir = "/Users/rbondare/"
 
-abf = pyabf.ABF(os.path.join(base_dir, "20.02.2025 M3/2025_02_20_0019.abf"))
 
-time_range = [0.5, 0.515] # this time range to detect only the FIRST SPIKE 
-#time_range = [0, 4] #for the enitre duration of the sweep
+abf = pyabf.ABF(os.path.join(base_dir, "23.03.2026 M3/2026_03_23_0002.abf"))
 
-xlim = [0.45, 1]
+#time_range = [0.5, 0.515] # this time range to detect only the FIRST SPIKE 
+time_range = [0, 10] #for the enitre duration of the sweep
+
+#xlim = [0.45, 1]
+xlim = [6.5, 7.5]
 # Create subplots for each sweep
 num_sweeps = len(abf.sweepList)
 cols = 6 # Number of columns for subplots
