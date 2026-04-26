@@ -1,3 +1,13 @@
+
+'''
+This script compiles metadata from ABF files in a specified directory 
+and presents it in a structured format. It finds all files ending with abf in a folder, 
+opens each file and extracts relevant information such  protocol name, sweep number, recording duration, 
+tags, and comments from each ABF file. The resulting metadata is displayed in a table 
+format and can optionally be saved to a CSV file as abf_metadata.csv in the same folder 
+'''
+
+
 import pyabf 
 import pandas as pd
 import numpy as np 

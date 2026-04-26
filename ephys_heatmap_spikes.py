@@ -5,7 +5,8 @@ import seaborn as sns
 import os
 sns.set_context('poster')
 
-base_dir = "Z:\\Group Members\\Rima\\Ephys_NE\\DATA\\ntsr1"
+#base_dir = "Z:\\Group Members\\Rima\\Ephys_NE\\DATA\\ntsr1"
+base_dir = "/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA/ntsr1" #for mac
 
 
 abf1 = pyabf.ABF(os.path.join(base_dir, "12.05.2025 M4/2025_05_12_0001.abf"))
