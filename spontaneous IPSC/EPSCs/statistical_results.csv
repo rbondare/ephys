@@ -1,0 +1,9 @@
+Dataset,Synaptic,Measure,N,Baseline,NA,Change %,Test,Statistic,P-value,Sig,Effect
+ntsr1,sEPSC,Frequency,9,1.3715±0.8924,0.6111±0.3881,-55.4%,Wilcoxon,2.0000,0.0117,*,0.9556
+ntsr1,sEPSC,Amplitude,9,6.2055±1.1097,6.1541±0.8811,-0.8%,t-test,0.1374,0.8941,ns,-0.0513
+ntsr1,sIPSC,Frequency,9,1.6013±1.1097,6.7806±4.5989,323.4%,t-test,-3.5777,0.0072,**,1.5483
+ntsr1,sIPSC,Amplitude,9,8.0265±2.3916,8.4804±2.3766,5.7%,Wilcoxon,21.0000,0.9102,ns,0.5333
+GAD67,sEPSC,Frequency,15,3.1066±3.5111,5.4771±6.1214,76.3%,Wilcoxon,6.0000,0.0009,***,0.9500
+GAD67,sEPSC,Amplitude,15,10.8780±4.0889,10.5025±2.7544,-3.5%,Wilcoxon,44.0000,0.3894,ns,0.6333
+GAD67,sIPSC,Frequency,15,0.5813±0.5280,1.6093±1.9968,176.9%,Wilcoxon,3.0000,0.0003,***,0.9750
+GAD67,sIPSC,Amplitude,15,6.4618±1.7629,7.4843±1.8498,15.8%,t-test,-2.7923,0.0144,*,0.5659
