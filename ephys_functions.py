@@ -1,6 +1,6 @@
 """
 This script provides functions for plotting electrophysiology data from ABF files
-including: peak detection, counting peaks across sweeps, 
+including: peak detection, counting peaks across sweeps etc
 
 """
 

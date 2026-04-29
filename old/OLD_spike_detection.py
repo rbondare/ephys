@@ -17,8 +17,8 @@ def detect_all_peaks(data_array, height_threshold=0, prominence_min=0.1, distanc
     )
     return peaks, properties
 
-base_dir = "Z:\\Group Members\\Rima\\Ephys_NE\\DATA\\ntsr1"
-abf = pyabf.ABF(os.path.join(base_dir, "12.05.2025 M5\\2025_05_12_0024.abf"))
+base_dir = "/Users/rbondare/"
+abf = pyabf.ABF(os.path.join(base_dir, "23.03.2026 M3/2026_03_23_0002.abf"))
 
 
 # Create subplots for each sweep
