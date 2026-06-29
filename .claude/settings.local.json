@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(ls \"/Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA/double_opto/20.04.2026/18.06.2026 M4/2026_06_18_0009.abf\" 2>&1)",
+      "Read(//Volumes/joeschgrp/Group Members/Rima/Ephys_NE/DATA/double_opto/20.04.2026/18.06.2026 M4/**)"
+    ]
+  }
+}
