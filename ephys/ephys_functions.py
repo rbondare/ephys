@@ -41,6 +41,178 @@ def detect_peaks(data_array, height_threshold=2, prominence_min=0.1, distance_mi
     return peaks, properties
 
 
+def windowed_mean_excised(y_window, sample_rate_hz, height_threshold=4, prominence_min=0.1,
+                           distance_min=5, exclude_pre_ms=5.0, exclude_post_ms=15.0):
+    """
+    Mean of y_window with samples near each detected spike excised, so a window
+    that contains action potentials can still yield a subthreshold ("resting")
+    voltage estimate instead of being biased upward by spike waveforms.
+
+    Detects spikes via detect_peaks, then for each detected peak masks out
+    [peak - exclude_pre_ms, peak + exclude_post_ms] (asymmetric: a short
+    pre-peak upstroke vs a longer post-peak afterhyperpolarization), clipped
+    to the window's own bounds.
+
+    Parameters:
+    - y_window: 1D voltage array for a single time window of a single sweep
+    - sample_rate_hz: sampling rate of y_window, used to convert ms to samples
+    - height_threshold, prominence_min, distance_min: passed to detect_peaks
+    - exclude_pre_ms, exclude_post_ms: exclusion half-widths around each peak
+
+    Returns:
+    - mean_value: mean of the non-excised samples, or NaN if every sample in
+      the window was excised (e.g. continuous firing fills the window)
+    - keep_mask: boolean array, True where a sample was kept
+    - peak_indices: indices (local to y_window) where detect_peaks fired
+    - n_excised: number of samples excised
+    - n_total: total number of samples in y_window
+    """
+    y_window = np.asarray(y_window)
+    n_total = len(y_window)
+    keep_mask = np.ones(n_total, dtype=bool)
+
+    if n_total == 0:
+        return np.nan, keep_mask, np.array([], dtype=int), 0, 0
+
+    peak_indices, _ = detect_peaks(
+        y_window,
+        height_threshold=height_threshold,
+        prominence_min=prominence_min,
+        distance_min=distance_min,
+    )
+
+    pre_samples = int(round(exclude_pre_ms / 1000 * sample_rate_hz))
+    post_samples = int(round(exclude_post_ms / 1000 * sample_rate_hz))
+
+    for p in peak_indices:
+        lo = max(0, p - pre_samples)
+        hi = min(n_total - 1, p + post_samples)
+        keep_mask[lo:hi + 1] = False
+
+    n_excised = int((~keep_mask).sum())
+    if keep_mask.sum() == 0:
+        return np.nan, keep_mask, peak_indices, n_excised, n_total
+
+    mean_value = float(np.mean(y_window[keep_mask]))
+    return mean_value, keep_mask, peak_indices, n_excised, n_total
+
+
+def sweep_window_means_excised(x_sweep, y_sweep, stimulus_windows, sample_rate_hz,
+                                height_threshold=4, prominence_min=0.1, distance_min=5,
+                                exclude_pre_ms=5.0, exclude_post_ms=15.0):
+    """
+    Applies windowed_mean_excised to each (start, end, label, color) window in
+    stimulus_windows, using the same x/y masking approach as
+    count_and_plot_peaks_multi_window (opto/ephys_double_opto.ipynb).
+
+    Returns:
+    dict keyed by window label, each value a dict with keys
+    "mean", "keep_mask", "peak_indices_global" (mapped back to indices into
+    y_sweep, not y_window), "n_excised", "n_total".
+    """
+    results = {}
+    for start, end, label, _color in stimulus_windows:
+        window_mask = (x_sweep >= start) & (x_sweep <= end)
+        y_window = y_sweep[window_mask]
+
+        mean_value, keep_mask, peak_indices_local, n_excised, n_total = windowed_mean_excised(
+            y_window, sample_rate_hz,
+            height_threshold=height_threshold,
+            prominence_min=prominence_min,
+            distance_min=distance_min,
+            exclude_pre_ms=exclude_pre_ms,
+            exclude_post_ms=exclude_post_ms,
+        )
+
+        global_indices = np.where(window_mask)[0]
+        peak_indices_global = global_indices[peak_indices_local] if n_total > 0 else np.array([], dtype=int)
+
+        results[label] = {
+            "mean": mean_value,
+            "keep_mask": keep_mask,
+            "peak_indices_global": peak_indices_global,
+            "n_excised": n_excised,
+            "n_total": n_total,
+        }
+    return results
+
+
+def extract_excised_trajectory_from_abf(abf_file, stimulus_windows, sweep_indices=None,
+                                         height_threshold=4, prominence_min=0.1, distance_min=5,
+                                         exclude_pre_ms=5.0, exclude_post_ms=15.0):
+    """
+    Per-file spike-excised mean voltage for each window in stimulus_windows,
+    averaged across sweeps (file-level summary of extract_excised_per_sweep).
+
+    sweep_indices=None uses every sweep in the file. np.nanmean aggregation
+    means one fully-excised sweep/window doesn't poison the file-level
+    average; if every sweep is NaN for a given window, that window's
+    trajectory value is NaN and a warning is printed (naming the file and
+    window) rather than silently vanishing.
+
+    Returns:
+    dict keyed by window label -> mean voltage (float) or NaN.
+    """
+    per_sweep_df = extract_excised_per_sweep(
+        abf_file, stimulus_windows, sweep_indices=sweep_indices,
+        height_threshold=height_threshold, prominence_min=prominence_min, distance_min=distance_min,
+        exclude_pre_ms=exclude_pre_ms, exclude_post_ms=exclude_post_ms,
+    )
+
+    trajectory = {}
+    for label, group in per_sweep_df.groupby('window')['mean']:
+        values_arr = group.values
+        if np.all(np.isnan(values_arr)):
+            print(f"Warning: all sweeps excised for window '{label}' in {os.path.basename(abf_file)}")
+            trajectory[label] = np.nan
+        else:
+            trajectory[label] = float(np.nanmean(values_arr))
+
+    return trajectory
+
+
+def extract_excised_per_sweep(abf_file, stimulus_windows, sweep_indices=None,
+                               height_threshold=4, prominence_min=0.1, distance_min=5,
+                               exclude_pre_ms=5.0, exclude_post_ms=15.0):
+    """
+    Per-sweep spike-excised mean voltage for each window in stimulus_windows —
+    the detail that extract_excised_trajectory_from_abf averages away. Useful
+    for looking at within-file trends across repeated sweeps (e.g. whether a
+    prolonged/repeated stimulus has a cumulative effect), not just a single
+    file-level summary.
+
+    sweep_indices=None uses every sweep in the file (no "last 10" cap, unlike
+    extract_rmp_from_abf / extract_excised_trajectory_from_abf's default) so
+    the full within-file time course is visible.
+
+    Returns:
+    DataFrame with one row per (sweep, window) pair: columns
+    sweep, window, mean, n_excised, n_total.
+    """
+    abf = pyabf.ABF(abf_file)
+    if sweep_indices is None:
+        sweep_indices = abf.sweepList
+
+    rows = []
+    for sweep in sweep_indices:
+        abf.setSweep(sweep)
+        window_results = sweep_window_means_excised(
+            abf.sweepX, abf.sweepY, stimulus_windows, abf.dataRate,
+            height_threshold=height_threshold,
+            prominence_min=prominence_min,
+            distance_min=distance_min,
+            exclude_pre_ms=exclude_pre_ms,
+            exclude_post_ms=exclude_post_ms,
+        )
+        for label, result in window_results.items():
+            rows.append({
+                'sweep': sweep, 'window': label, 'mean': result['mean'],
+                'n_excised': result['n_excised'], 'n_total': result['n_total'],
+            })
+
+    return pd.DataFrame(rows)
+
+
 def count_peaks(abf_file, condition, genotype, ID, time_window=None, peak_params=None, output_dir="C:\\Users\\rbondare\\ephys\\results\\"):
     """
     Count peaks in all sweeps of an ABF file, optionally within a time window, and associate results with a condition.
